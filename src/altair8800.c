@@ -44,7 +44,7 @@ int bas8k_init() {
 	return 0;
 }
 int wozmon_init() {
-	if (read_file_into_buffer("Q:/asm/8080wozmon/wozmon.bin", memory, 0x10000, 0xE000, 0) != 0) return 1;
+	if (read_file_into_buffer("wozmon.bin", memory, 0x10000, 0xE000, 0) != 0) return 1;
 	return 0;
 }
 
