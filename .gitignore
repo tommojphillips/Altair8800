@@ -1,4 +1,9 @@
-.vs/
-x64/
-Win32/
 *.user
+*.bin
+
+.vs/
+
+x64/
+Debug/
+Release/
+

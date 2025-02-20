@@ -13,3 +13,9 @@ git clone --recurse-submodules https://github.com/tommojphillips/Altair8800.git
 ```
 
  2. Open `vs\Altair8800.sln`  in visual studio, build and run
+
+## ROMS
+ |                 |                                                         |
+ | --------------- | -------------------------------------------------       |
+ | Altair Basic 8K | https://altairclone.com/downloads/roms/8K%20BASIC/      |
+ | Wozmon          | https://github.com/tommojphillips/Wozmon-i8080/releases |

@@ -19,56 +19,34 @@
 int bas8k_init();
 int wozmon_init();
 
-#define BASIC_8K 0
-#define WOZMON 1
-
 typedef struct {
-	int id;
-	const char* name;
-	int(*init)();
-} ROMSET;
+	I8080 cpu;
+	uint8_t* memory;
 
-const ROMSET altair8800_roms[] = {
-	{ BASIC_8K, "Altair Basic 8K", bas8k_init },
-	{ WOZMON,   "Wozmon",          wozmon_init },
-};
+	uint8_t status;
 
-I8080 cpu = { 0 };
-uint8_t* memory = NULL;
+} ALTAIR8800;
+
+ALTAIR8800 altair = { 0 };
 
 int bas8k_init() {
-	if (read_file_into_buffer("Basic8k/8kBas_e0.bin", memory, 0x10000, 0xE000, 0x800) != 0) return 1;
-	if (read_file_into_buffer("Basic8k/8kBas_e8.bin", memory, 0x10000, 0xE800, 0x800) != 0) return 1;
-	if (read_file_into_buffer("Basic8k/8kBas_f0.bin", memory, 0x10000, 0xF000, 0x800) != 0) return 1;
-	if (read_file_into_buffer("Basic8k/8kBas_f8.bin", memory, 0x10000, 0xF800, 0x800) != 0) return 1;
+	if (read_file_into_buffer("8kBas_e0.bin", altair.memory, 0x10000, 0xE000, 0x800) != 0) return 1;
+	if (read_file_into_buffer("8kBas_e8.bin", altair.memory, 0x10000, 0xE800, 0x800) != 0) return 1;
+	if (read_file_into_buffer("8kBas_f0.bin", altair.memory, 0x10000, 0xF000, 0x800) != 0) return 1;
+	if (read_file_into_buffer("8kBas_f8.bin", altair.memory, 0x10000, 0xF800, 0x800) != 0) return 1;
 	return 0;
 }
 int wozmon_init() {
-	if (read_file_into_buffer("wozmon.bin", memory, 0x10000, 0xE000, 0) != 0) return 1;
+	if (read_file_into_buffer("wozmon.bin", altair.memory, 0x10000, 0xD000, 0) != 0) return 1;
 	return 0;
-}
-
-int altair8800_load_rom(int i) {
-	printf("Loading rom: %s\n", altair8800_roms[i].name);
-	if (altair8800_roms[i].init() != 0) {
-		return 1;
-	}
-	return 0;
-}
-
-static void cpu_tick(uint32_t cycles) {
-	while (cpu.cycles < cycles) {
-		i8080_execute(&cpu);
-	}
-	cpu.cycles = 0;
 }
 
 uint8_t altair8800_read_byte(uint16_t address) {
-	return *(uint8_t*)(memory + (address & 0xFFFF));
+	return *(uint8_t*)(altair.memory + (address & 0xFFFF));
 }
 void altair8800_write_byte(uint16_t address, uint8_t value) {
 	if (address < 0x8000)
-		*(uint8_t*)(memory + (address & 0xFFFF)) = value;
+		*(uint8_t*)(altair.memory + (address & 0xFFFF)) = value;
 }
 
 #define PORT_SIO_STATUS  0x10
@@ -97,16 +75,13 @@ uint8_t sio_status() {
 		return STATUS_2SIO_NO_INPUT;
 	}
 }
-void sio_control(uint8_t value) {
-	printf("2SIO_CONTROL: %X\n", value);
-}
 void sio_read(char* ch) {
 	kb_get_input(ch);
-	if (*ch >= 'a' && *ch <= 'z')
-		*ch -= 0x20;
+	if (*ch >= 'a' && *ch <= 'z') *ch -= 0x20;
+	if (*ch == 0x08) *ch = '_';
 }
 void sio_write(char ch) {
-	if (ch == 0x8) {
+	if (ch == '_') {
 		printf("\b \b");
 	}
 	else {
@@ -129,7 +104,7 @@ uint8_t altair8800_read_io(uint8_t port) {
 			return 0x0;
 
 		default:
-			printf("Reading from undefined port: %02X\n", port);
+			//printf("Reading from undefined port: %02X\n", port);
 			return 0;
 	}
 
@@ -137,10 +112,6 @@ uint8_t altair8800_read_io(uint8_t port) {
 void altair8800_write_io(uint8_t port, uint8_t value) {
 	switch (port) {
 	
-		case PORT_SIO_CONTROL:
-			sio_control(value);
-			break;
-
 		case PORT_SIO_WRITE:
 			sio_write(value);
 			break;
@@ -149,48 +120,46 @@ void altair8800_write_io(uint8_t port, uint8_t value) {
 			break;
 
 		default:
-			printf("Writing to undefined port: %02X = %02X\n", port, value);
+			//printf("Writing to undefined port: %02X = %02X\n", port, value);
 			break;
 	}
 }
 
 void altair8800_reset() {
-	i8080_reset(&cpu);
-	cpu.pc = 0xe000;
-	cpu.sp = 0x2400;
-	memset(memory, 0, 0xE000);
-	fprintf(stderr, "RESET\n");
+	i8080_reset(&altair.cpu);
+	altair.cpu.pc = 0xD000;
+	memset(altair.memory, 0, 0xE000);
 }
 void altair8800_update() {
-	cpu_tick(VBLANK_RATE);
+	while (altair.cpu.cycles < VBLANK_RATE) {
+		i8080_execute(&altair.cpu);
+	}
+	altair.cpu.cycles = 0;
 }
 
 int altair8800_init() {
-	memory = (uint8_t*)malloc(0x10000);
-	if (memory == NULL) {
-		printf("Failed to allocate ROM\n");
+	altair.memory = (uint8_t*)malloc(0x10000);
+	if (altair.memory == NULL) {
+		printf("Failed to allocate Memory\n");
 		return 1;
 	}
-	memset(memory, 0, 0x10000);
+	memset(altair.memory, 0, 0x10000);
 
-	i8080_init(&cpu);
-	cpu.read_byte = altair8800_read_byte;
-	cpu.write_byte = altair8800_write_byte;
-	cpu.read_io = altair8800_read_io;
-	cpu.write_io = altair8800_write_io;
+	i8080_init(&altair.cpu);
+	altair.cpu.read_byte = altair8800_read_byte;
+	altair.cpu.write_byte = altair8800_write_byte;
+	altair.cpu.read_io = altair8800_read_io;
+	altair.cpu.write_io = altair8800_write_io;
 
 	altair8800_reset();
 
-	//if (altair8800_load_rom(BASIC_8K) != 0) {
-	if (altair8800_load_rom(WOZMON) != 0) {
-		return 1;
-	}
-
+	wozmon_init();
+	bas8k_init();
 	return 0;
 }
 void altair8800_destroy() {
-	if (memory != NULL) {
-		free(memory);
-		memory = NULL;
+	if (altair.memory != NULL) {
+		free(altair.memory);
+		altair.memory = NULL;
 	}
 }

@@ -3,12 +3,12 @@
  */
 
 #include "stdio.h"
+#include "string.h"
 
 #include "i8080.h"
 #include "altair8800.h"
 
 int main(int argc, char** argv) {
-
 	altair8800_init();
 	while (1) {		
 		altair8800_update();

@@ -34,6 +34,5 @@ int read_file_into_buffer(const char* filename, void* buff, const uint32_t buff_
 
 	fread((uint8_t*)buff + offset, 1, size, file);
 	fclose(file);
-	printf("Loaded %s\n", filename);
 	return 0;
 }
