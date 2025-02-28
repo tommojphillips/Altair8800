@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
-int read_file_into_buffer(const char* filename, void* buff, const uint32_t buff_size, const uint32_t offset, const uint32_t expected_size) {
+int read_file_into_buffer(const char* filename, void* buff, const uint32_t buff_size, const uint32_t offset, uint32_t* file_size, const uint32_t expected_size) {
 	FILE* file = NULL;
 	uint32_t size = 0;
 	if (filename == NULL)
@@ -18,6 +18,9 @@ int read_file_into_buffer(const char* filename, void* buff, const uint32_t buff_
 
 	fseek(file, 0, SEEK_END);
 	size = ftell(file);
+	if (file_size != NULL) {
+		*file_size = size;
+	}
 	fseek(file, 0, SEEK_SET);
 
 	if (expected_size != 0 && size != expected_size) {
@@ -32,7 +35,8 @@ int read_file_into_buffer(const char* filename, void* buff, const uint32_t buff_
 		return 1;
 	}
 
-	fread((uint8_t*)buff + offset, 1, size, file);
+	size_t bytes_read = fread((uint8_t*)buff + offset, 1, size, file);
+	printf("%s -> %X ( %llu bytes )\n", filename, offset, bytes_read);
 	fclose(file);
 	return 0;
 }

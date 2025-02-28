@@ -5,8 +5,23 @@
 #ifndef ALTAIR_8800_H
 #define ALTAIR_8800_H
 
-int altair8800_load_rom(int i);
-void altair8800_reset();
+#include "i8080.h"
+
+typedef struct {
+	uint8_t status;
+	char ch;
+} SIO;
+
+typedef struct {
+	I8080 cpu;
+	uint8_t* memory;
+	uint32_t ram_size;
+	uint8_t front_panel_switches;
+	SIO sio;
+} ALTAIR8800;
+
+extern ALTAIR8800 altair;
+
 void altair8800_update();
 int altair8800_init();
 void altair8800_destroy();
