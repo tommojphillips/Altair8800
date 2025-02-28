@@ -12,21 +12,40 @@ The project is built in Visual Studio 2022
 git clone --recurse-submodules https://github.com/tommojphillips/Altair8800.git
 ```
 
- 2. Open `vs\Altair8800.sln`  in visual studio, build and run
+ 2. Open `vc\Altair8800.sln`  in visual studio, build and run
 
-## ROMS
- |                 |                                                         |
- | --------------- | -------------------------------------------------       |
- | Altair Basic 8K | https://altairclone.com/downloads/roms/8K%20BASIC/      |
- | Wozmon          | https://github.com/tommojphillips/Wozmon-i8080/releases |
+
+ ## Usage
+ 
+  Syntax:
+ ```
+ Altair8800.exe -o<offset> -f<filename>
+ ```
+ ---
+
+  - Offset should be in hex
+
+ Options:
+ | Opt     |  Desc      |              |
+ | ------- | ---------- | ------------ |
+ | `-o`    | Offset     | 0x0000       |
+ | `-f`    | Filename   |              |
+ | `-r`    | Ram amount | 0x8000 (32K) |
+
+ ---
+
+### Running Wozmon for i8080
+ - Download Wozmon rom from https://github.com/tommojphillips/Wozmon-i8080/
+ - Wozmon for i8080 should be loaded at hex address: `D000`
+ - Use command:
+ ```
+ Altair8800.exe -oD000 -fwozmon.bin
+ ```
 
 ### Running Altair Basic 8K
-
-![Screenshot 2025-02-26 205416](https://github.com/user-attachments/assets/90ce99c7-e201-40f9-934b-2b208d9680b2)
-
-If Wozmon i8080 is used, The emualator will startup in wozmon. Examine Hex Address `E000` and Run 
-```
-\
-E000 R
-```
-
+ - Download 8K Basic roms from https://altairclone.com/downloads/roms/8K%20BASIC/
+ - Altair Basic should be loaded at hex address: `E000`
+ - Use command:
+ ```
+ Altair8800.exe -oE000 -f8kBas_e0.bin -f8kBas_e8.bin -f8kBas_f0.bin -f8kBas_f8.bin
+ ```
