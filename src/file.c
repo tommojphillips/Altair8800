@@ -35,8 +35,8 @@ int read_file_into_buffer(const char* filename, void* buff, const uint32_t buff_
 		return 1;
 	}
 
-	size_t bytes_read = fread((uint8_t*)buff + offset, 1, size, file);
-	printf("%s -> %X ( %llu bytes )\n", filename, offset, bytes_read);
+	uint32_t bytes_read = (uint32_t)fread((uint8_t*)buff + offset, 1, size, file);
+	printf("%s -> %X ( %u bytes )\n", filename, offset, bytes_read);
 	fclose(file);
 	return 0;
 }
