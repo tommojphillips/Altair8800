@@ -26,7 +26,7 @@ git clone --recurse-submodules https://github.com/tommojphillips/Altair8800.git
   - Offset should be in hex
 
  Options:
- | Opt     |  Desc      |              |
+ | Opt     |  Desc      | Default      |
  | ------- | ---------- | ------------ |
  | `-o`    | Offset     | 0x0000       |
  | `-f`    | Filename   |              |

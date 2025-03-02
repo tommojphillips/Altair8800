@@ -9,6 +9,9 @@
 
 typedef struct {
 	uint8_t status;
+	uint8_t control;
+	uint8_t output_interrupt;
+	uint8_t input_interrupt;
 	char ch;
 } SIO;
 
