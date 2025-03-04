@@ -10,6 +10,14 @@
 #include "altair8800.h"
 #include "file.h"
 
+void clear_console_mode(uint32_t mode_mask) {
+	DWORD mode = 0;
+	HANDLE input_handle = GetStdHandle(STD_INPUT_HANDLE);
+	GetConsoleMode(input_handle, &mode);
+	mode &= ~mode_mask;
+	SetConsoleMode(input_handle, mode);
+}
+
 void args(int argc, char** argv) {
 	const char* filename = NULL;
 	uint32_t offset = 0;
@@ -32,6 +40,10 @@ void args(int argc, char** argv) {
 					altair.ram_size = strtol(argv[i] + j + 1, NULL, 16) & 0xFFFF;
 					next_arg = 1;
 					break;
+				case 'p':
+					clear_console_mode(ENABLE_PROCESSED_INPUT);
+					next_arg = 1;
+					break;
 
 				case '-':
 				case '/':
@@ -44,19 +56,8 @@ void args(int argc, char** argv) {
 	}
 }
 
-void clear_console_mode(uint32_t mode_mask) {
-	DWORD mode = 0;
-	HANDLE input_handle = GetStdHandle(STD_INPUT_HANDLE);
-	GetConsoleMode(input_handle, &mode);
-	mode &= ~mode_mask;
-	SetConsoleMode(input_handle, mode);
-}
 
 int main(int argc, char** argv) {
-	
-	/* Treat Control C as input */
-	clear_console_mode(ENABLE_PROCESSED_INPUT);
-
 	altair8800_init();
 	args(argc, argv);
 	while (1) {
