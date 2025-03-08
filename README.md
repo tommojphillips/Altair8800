@@ -6,6 +6,10 @@ A MITS Altair 8800 emulator that runs in the terminal. Capable of running MITS B
 
 The project is built in Visual Studio 2022
  
+| Dependencies   |                                                                |
+| -------------- | -------------------------------------------------------------- |
+| I8080          | https://github.com/tommojphillips/i8080                        |
+
  1. Clone the repo
 
 ```
