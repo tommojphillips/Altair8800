@@ -135,48 +135,7 @@ void sio_device_select(uint8_t value) {
 	Of number the two device addresses on the board, the control channel is always an even 
 	and the data channel is always an odd number. */
 }
-void sio_control(uint8_t value) {
-	/* The control channel has two purposes: it is used to enable/disable the hardware
-	interrupt capability for the Input or Output device, and to test the status of the
-	Input/Output device. 
-	
-	After an "IN" instruction is executed with the control channel address, "SINP" goes
-	high and IC J pin 4 is high thus causing IC G pin 3 to go low. This enables SW
-	(Status Word Enable) at IC M pin 16 and causes IC E pin 12 and IC D pin 8 to go low,
-	thus enabling the Data In lines. (Note that IC D pin 12 is always high except during
-	the into initial the CPU power on clear, POC.) This inputs the data to the Data In lines and
-	into the CPU accumulator. 
-	
-	When an "OUT" instruction is executed with the control channel address, data bits
-	0 & 1 are gated through IC's E & A to the Input/Output interrupt flip-flops, IC B. 
 
-	D0     D1     Output interrupt  Input interrupt
-	 low    low    0                 0
-	 low    high   1                 0
-	 high   low    0                 1
-	 high   high   1                 1
-	*/
-
-	altair.sio.control = value & 0x03;
-	altair.sio.input_interrupt = value & 0x01;
-	altair.sio.output_interrupt = (value & 0x02) >> 1;
-}
-void sio_device_select(uint8_t value) {
-	/* When the CPU executes an "OUT" or an "IN" instruction, it places the device address 
-	( provided with the instruction ) on both the 8 lower order address bus lines and the 
-	8 higher order address bus lines. 
-	
-	The 8 lower order address bus lines are fed to the select logic on the board, IC's
-	H & J. If the address on the bus is equal to the address selected on the board,
-	IC I pin 8 will go low,. thus enabling IC J pins 3 & 6.
-	
-	Depending on the state of AO (the least significant address bit), either the control 
-	pin channel 4 or the data channel will be enabled. If AO is at a logic low level, IC J
-	will go high, thus enabling the control channel. If AO is at a logic high
-	level, ICJ pin I will go high, thus enabling the data channel.
-	Of number the two device addresses on the board, the control channel is always an even 
-	and the data channel is always an odd number. */
-}
 
 uint8_t altair8800_read_io(uint8_t port) {
 	switch (port) {
