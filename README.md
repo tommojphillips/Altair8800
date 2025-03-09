@@ -18,38 +18,36 @@ git clone --recurse-submodules https://github.com/tommojphillips/Altair8800.git
 
  2. Open `vc\Altair8800.sln`  in visual studio, build and run
 
-
  ## Usage
  
-  Syntax:
+Syntax:
  ```
- Altair8800.exe -o<offset> -f<filename>
+ Altair8800.exe -o<offset> <rom>
  ```
  ---
 
-  - Offset should be in hex
+ |  Options       |  Desc      | Default      |
+ | -------        | ---------- | ------------ |
+ | `-o<offset>`   | Offset     | 0x0000       |
+ | `-r<size>`     | Ram size   | 0x8000 (32K) |
 
- Options:
- | Opt     |  Desc      | Default      |
- | ------- | ---------- | ------------ |
- | `-o`    | Offset     | 0x0000       |
- | `-f`    | Filename   |              |
- | `-r`    | Ram amount | 0x8000 (32K) |
+  - Offset should be in hex
+  - Programs are deposited into memory sequentially starting from `-o<offset>`
 
  ---
 
 ### Running Wozmon for i8080
  - Download Wozmon rom from https://github.com/tommojphillips/Wozmon-i8080/
  - Wozmon for i8080 should be loaded at hex address: `D000`
- - Use command:
+
  ```
- Altair8800.exe -oD000 -fwozmon.bin
+ Altair8800.exe -oD000 wozmon.bin
  ```
 
 ### Running Altair Basic 8K
  - Download 8K Basic roms from https://altairclone.com/downloads/roms/8K%20BASIC/
  - Altair Basic should be loaded at hex address: `E000`
- - Use command:
+
  ```
- Altair8800.exe -oE000 -f8kBas_e0.bin -f8kBas_e8.bin -f8kBas_f0.bin -f8kBas_f8.bin
+ Altair8800.exe -oE000 8kBas_e0.bin 8kBas_e8.bin 8kBas_f0.bin 8kBas_f8.bin
  ```
