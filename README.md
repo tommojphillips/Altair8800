@@ -44,8 +44,6 @@ Syntax:
  Altair8800.exe -oD000 wozmon.bin
  ```
 
-![Screenshot 2025-03-09 132652](https://github.com/user-attachments/assets/8bc71740-ed72-4a07-8ded-9e4e055184bd)
-
 ### Running Altair Basic 8K
  - Download 8K Basic roms from https://altairclone.com/downloads/roms/8K%20BASIC/
  - Altair Basic should be loaded at hex address: `E000`
@@ -53,5 +51,3 @@ Syntax:
  ```
  Altair8800.exe -oE000 8kBas_e0.bin 8kBas_e8.bin 8kBas_f0.bin 8kBas_f8.bin
  ```
-![Screenshot 2025-03-09 132740](https://github.com/user-attachments/assets/2fa1785d-958a-4534-a5b9-a9286847b626)
-
