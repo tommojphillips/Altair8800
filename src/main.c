@@ -42,6 +42,33 @@ void args(int argc, char** argv) {
 				break;
 			}
 
+			if (strncmp("-d", arg, 2) == 0) {
+				arg += 2; 
+				uint8_t disk = 0; 
+				if (arg[1] == ':') {
+					if ((arg[0] >= 'A' && arg[0] <= 'Z')) {
+						disk = arg[0] - 'A';
+					}
+					else if (arg[0] >= 'a' && arg[0] <= 'z') {
+						disk = arg[0] - 'a';
+					}
+					else {
+						disk = strtol(arg, NULL, 10) & 0xF;
+					}
+					arg += 2;
+				}
+
+				altair.dcdd.disk_file[disk] = NULL;
+				fopen_s(&altair.dcdd.disk_file[disk], arg, "r+b");
+				if (altair.dcdd.disk_file[disk] == NULL) {
+					printf("Failed to open disk file: %s\n", arg);
+				}
+				else {
+					printf("%s -> %c:\n", arg, 'A'+disk);
+				}
+				break;
+			}
+
 			uint32_t file_size = 0;
 			read_file_into_buffer(arg, altair.memory, 0x10000, offset, &file_size, 0);
 			offset += file_size;
@@ -53,7 +80,7 @@ void args(int argc, char** argv) {
 int main(int argc, char** argv) {
 	altair8800_init();
 	args(argc, argv);
-	while (1) {
+	while (altair.running) {
 		altair8800_update();
 	}
 	altair8800_destroy();
