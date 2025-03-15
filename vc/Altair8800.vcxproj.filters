@@ -30,6 +30,12 @@
     <ClInclude Include="..\src\file.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\88_dcdd.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\88_sio.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\altair8800.c">
@@ -45,6 +51,12 @@
       <Filter>i8080</Filter>
     </ClCompile>
     <ClCompile Include="..\src\file.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\88_dcdd.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\88_sio.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -149,6 +149,8 @@
   <ItemGroup>
     <ClCompile Include="..\lib\I8080\i8080.c" />
     <ClCompile Include="..\lib\I8080\i8080_mnem.c" />
+    <ClCompile Include="..\src\88_dcdd.c" />
+    <ClCompile Include="..\src\88_sio.c" />
     <ClCompile Include="..\src\altair8800.c" />
     <ClCompile Include="..\src\file.c" />
     <ClCompile Include="..\src\main.c" />
@@ -156,6 +158,8 @@
   <ItemGroup>
     <ClInclude Include="..\lib\I8080\i8080.h" />
     <ClInclude Include="..\lib\I8080\i8080_mnem.h" />
+    <ClInclude Include="..\src\88_dcdd.h" />
+    <ClInclude Include="..\src\88_sio.h" />
     <ClInclude Include="..\src\altair8800.h" />
     <ClInclude Include="..\src\file.h" />
   </ItemGroup>

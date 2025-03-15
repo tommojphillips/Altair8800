@@ -6,14 +6,8 @@
 #define ALTAIR_8800_H
 
 #include "i8080.h"
-
-typedef struct {
-	uint8_t status;
-	uint8_t control;
-	uint8_t output_interrupt;
-	uint8_t input_interrupt;
-	char ch;
-} SIO;
+#include "88_sio.h"
+#include "88_dcdd.h"
 
 typedef struct {
 	I8080 cpu;
@@ -21,6 +15,8 @@ typedef struct {
 	uint32_t ram_size;
 	uint8_t front_panel_switches;
 	SIO sio;
+	DCDD dcdd;
+	int running;
 } ALTAIR8800;
 
 extern ALTAIR8800 altair;
