@@ -16,7 +16,7 @@ typedef struct {
 	char ch;
 } SIO;
 
-void sio_init(SIO* sio);
+void sio_reset(SIO* sio);
 void sio_update(SIO* sio);
 
 int sio_read_io(SIO* sio, uint8_t port, uint8_t* value);

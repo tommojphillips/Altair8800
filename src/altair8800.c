@@ -100,7 +100,7 @@ int altair8800_init() {
 	altair.front_panel_switches = 0x00;
 	altair.running = 1;
 	
-	sio_init(&altair.sio);
+	sio_reset(&altair.sio);
 	dcdd_init(&altair.dcdd);
 	dcdd_reset(&altair.dcdd);
 	return 0;
