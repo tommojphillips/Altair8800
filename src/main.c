@@ -53,18 +53,22 @@ void args(int argc, char** argv) {
 						disk = arg[0] - 'a';
 					}
 					else {
-						disk = strtol(arg, NULL, 10) & 0xF;
+						disk = strtol(arg, NULL, 10) & 0xFF;
 					}
 					arg += 2;
+					disk &= 0xF; // map disk A-P (0-15)
 				}
 
-				altair.dcdd.disk_file[disk] = NULL;
-				fopen_s(&altair.dcdd.disk_file[disk], arg, "r+b");
-				if (altair.dcdd.disk_file[disk] == NULL) {
+				if (altair.dcdd.disks[disk].file != NULL) {
+					fclose(altair.dcdd.disks[disk].file);
+				}
+				altair.dcdd.disks[disk].file = NULL;
+				fopen_s(&altair.dcdd.disks[disk].file, arg, "r+b");
+				if (altair.dcdd.disks[disk].file == NULL) {
 					printf("Failed to open disk file: %s\n", arg);
 				}
 				else {
-					printf("%s -> %c:\n", arg, 'A'+disk);
+					printf("%c:\t-> %s\n", 'A'+disk, arg);
 				}
 				break;
 			}

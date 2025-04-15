@@ -102,6 +102,7 @@ int altair8800_init() {
 	
 	sio_init(&altair.sio);
 	dcdd_init(&altair.dcdd);
+	dcdd_reset(&altair.dcdd);
 	return 0;
 }
 void altair8800_destroy() {
@@ -110,11 +111,5 @@ void altair8800_destroy() {
 		altair.memory = NULL;
 	}
 
-	for (int i = 0; i < DCDD_MAX_DISKS; ++i) {
-		if (altair.dcdd.disk_file[i] != NULL) {
-			fclose(altair.dcdd.disk_file[i]);
-			altair.dcdd.disk_file[i] = NULL;
-		}
-	}
-
+	dcdd_free(&altair.dcdd);
 }

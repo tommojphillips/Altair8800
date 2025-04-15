@@ -5,66 +5,118 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <malloc.h>
+#include <string.h>
 
 #include "88_dcdd.h"
 
- /*
-			  7   6   5   4   3   2   1   0
-			+---+---+---+---+---+---+---+---+
-			|   |   |   Sector Number   | T |
-			+---+---+---+---+---+---+---+---+
+ /* SECTOR BYTE
+ 
+		  7   6   5   4   3   2   1   0
+		+---+---+---+---+---+---+---+---+
+		| X | X | S | S | S | S | S | T |
+		+---+---+---+---+---+---+---+---+
 
- * Sector number = sector number currently under the head, 0-31.
- * T = Sector True, is a 0 when the sector is positioned to read or write.
- * If head is unloaded, hardware returns 0xFF.
+		X - ACTIVE_HIGH - not used
+		S               - sector number currently under the head, 0-31. (5 bits)
+		T - ACTIVE_LOW  - sector true; the sector is positioned to read or write.
+
+		If head is unloaded, hardware returns 0xFF.
  */
 
-//#define DCDD_DBG
+ /* STATUS BYTE
+ 
+		  7   6   5   4   3   2   1   0
+		+---+---+---+---+---+---+---+---+
+		| R | Z | I | X | S | H | M | W |
+		+---+---+---+---+---+---+---+---+
 
-#define DCDD_TRACKS_PER_DISK       77
-#define DCDD_SECTORS_PER_TRACK     32
-#define DCDD_BYTES_PER_SECTOR      137
+		R - ACTIVE_LOW  - read device is ready
+		Z - ACTIVE_LOW  - head is on track 0
+		I - ACTIVE_LOW  - interrupts are enabled
+		X - ACTIVE_HIGH - not used
+		S - ACTIVE_LOW  - disk is selected and active
+		H - ACTIVE_LOW  - head is loaded for r/w
+		M - ACTIVE_LOW  - head can be moved
+		W - ACTIVE_LOW  - write device is ready
+ */
 
-#define DCDD_STATUS_WRITE_READY    0x01 // when 0, write device is ready
-#define DCDD_STATUS_MOVE_HEAD      0x02 // when 0, head can be moved
-#define DCDD_STATUS_HEAD_LOADED    0x04 // when 0, head is loaded for r/w
-#define DCDD_STATUS_DRV_SELECT     0x08 // when 0, disk is selected and active
-#define DCDD_STATUS_INT_ENABLED    0x20 // when 0, interrupts are enabled
-#define DCDD_STATUS_TRACK_ZERO     0x40 // when 0, head is on track 0
-#define DCDD_STATUS_READ_READY     0x80 // when 0, read device is ready
+#define DCDD_TRACKS_PER_DISK       77   // Number of tracks per disk
+#define DCDD_SECTORS_PER_TRACK     32   // Number of sectors per track
+#define DCDD_BYTES_PER_SECTOR      137  // Number of bytes per sector
 
-#define DCDD_CMD_STEP_IN           0x01 // step in head
-#define DCDD_CMD_STEP_OUT          0x02 // step out head
-#define DCDD_CMD_LOAD_HEAD         0x04 // load head
-#define DCDD_CMD_UNLOAD_HEAD       0x08 // unload head
-#define DCDD_CMD_ENABLE_INT        0x10 // enable interrupts
-#define DCDD_CMD_DISABLE_INT       0x20 // disable interrupts
-#define DCDD_CMD_REDUCE_HEAD       0x40 // reduce head voltage
-#define DCDD_CMD_WRITE_ENABLE      0x80 // write enable
+#define DCDD_STATUS_WRITE_READY    0x01 // ACTIVE_LOW - write device is ready
+#define DCDD_STATUS_MOVE_HEAD      0x02 // ACTIVE_LOW - head can be moved
+#define DCDD_STATUS_HEAD_LOADED    0x04 // ACTIVE_LOW - head is loaded for r/w
+#define DCDD_STATUS_DRV_SELECT     0x08 // ACTIVE_LOW - disk is selected and active
+#define DCDD_STATUS_INT_ENABLED    0x20 // ACTIVE_LOW - interrupts are enabled
+#define DCDD_STATUS_TRACK_ZERO     0x40 // ACTIVE_LOW - head is on track 0
+#define DCDD_STATUS_READ_READY     0x80 // ACTIVE_LOW - read device is ready
 
-#define PORT_DCDD_STATUS   0x08 // 88-dcdd status port (in)
-#define PORT_DCDD_SELECTOR 0x08 // 88-dcdd selector port (out)
-#define PORT_DCDD_SECTOR   0x09 // 88-dcdd sector port (in)
-#define PORT_DCDD_COMMAND  0x09 // 88-dcdd command port (out)
-#define PORT_DCDD_DATA     0x0A // 88-dcdd data port (in/out)
+#define DCDD_CMD_STEP_IN           0x01 // step in head command
+#define DCDD_CMD_STEP_OUT          0x02 // step out head command
+#define DCDD_CMD_LOAD_HEAD         0x04 // load head command
+#define DCDD_CMD_UNLOAD_HEAD       0x08 // unload head command
+#define DCDD_CMD_ENABLE_INT        0x10 // enable interrupts command
+#define DCDD_CMD_DISABLE_INT       0x20 // disable interrupts command
+#define DCDD_CMD_REDUCE_HEAD       0x40 // reduce head voltage command
+#define DCDD_CMD_WRITE_ENABLE      0x80 // write enable command
 
-#define dbg_err(x, ...) printf(x, __VA_ARGS__)
+#define PORT_DCDD_STATUS           0x08 // status port (in)
+#define PORT_DCDD_SELECTOR         0x08 // selector port (out)
+#define PORT_DCDD_SECTOR           0x09 // sector port (in)
+#define PORT_DCDD_COMMAND          0x09 // command port (out)
+#define PORT_DCDD_DATA             0x0A // data port (in/out)
 
-#ifdef DCDD_DBG
-#define dbg_print(x, ...) printf(x, __VA_ARGS__)
-#else
-#define dbg_print(x, ...)
-#endif
+#define DCDD_SELECTOR_DRV_SELECT   0x80 // ACTIVE_HIGH - disk controller - no disk selected
+#define DCDD_SECTOR_TRUE           0x01 // ACTIVE_LOW  - the sector is positioned to r/w
 
-void dcdd_init(DCDD* dcdd) {
-	dcdd->status = DCDD_STATUS_DRV_SELECT |  // Disk not selected
-		           DCDD_STATUS_INT_ENABLED | // INT disabled
-		           DCDD_STATUS_HEAD_LOADED;  // Head not loaded
+#define track_pos(disk)  (DCDD_SECTORS_PER_TRACK * DCDD_BYTES_PER_SECTOR * disk.track)
+#define sector_pos(disk) (DCDD_BYTES_PER_SECTOR * disk.sector)
+#define head_pos(disk)   (track_pos(disk) + sector_pos(disk) + disk.index)
 
-	dcdd->selector = -1;
-	dcdd->command = 0;
-	dcdd->sector_pos = 0;
-	dcdd->track_pos = 0;
+static uint8_t dcdd_status(DCDD* dcdd);
+static uint8_t dcdd_sector(DCDD* dcdd);
+static uint8_t dcdd_read(DCDD* dcdd);
+static void dcdd_write(DCDD* dcdd, uint8_t value);
+static void dcdd_selector(DCDD* dcdd, uint8_t value);
+static void dcdd_command(DCDD* dcdd, uint8_t value);
+
+int dcdd_init(DCDD* dcdd) {
+	dcdd->disks = (DISK*)malloc(sizeof(DISK) * DCDD_MAX_DISKS);
+	if (dcdd->disks == NULL) {
+		return 1;
+	}
+	memset(dcdd->disks, 0, sizeof(DISK) * DCDD_MAX_DISKS);
+	return 0;
+}
+void dcdd_free(DCDD* dcdd) {
+	if (dcdd->disks != NULL) {
+		for (int i = 0; i < DCDD_MAX_DISKS; ++i) {
+			if (dcdd->disks[i].file != NULL) {
+				fclose(dcdd->disks[i].file);
+				dcdd->disks[i].file = NULL;
+			}
+		}
+		free(dcdd->disks);
+		dcdd->disks = NULL;
+	}
+}
+void dcdd_reset(DCDD* dcdd) {
+	dcdd->selector = DCDD_SELECTOR_DRV_SELECT;
+	for (int i = 0; i < DCDD_MAX_DISKS; ++i) {
+		dcdd->disks[i].track = 0;
+		dcdd->disks[i].sector = 0;
+		dcdd->disks[i].index = 0;
+		dcdd->disks[i].status = 
+			DCDD_STATUS_WRITE_READY |
+			DCDD_STATUS_MOVE_HEAD   |
+			DCDD_STATUS_HEAD_LOADED |
+			DCDD_STATUS_DRV_SELECT  |
+			DCDD_STATUS_INT_ENABLED |
+			DCDD_STATUS_TRACK_ZERO  |
+			DCDD_STATUS_READ_READY;
+	}
 }
 int dcdd_read_io(DCDD* dcdd, uint8_t port, uint8_t* value) {
 	switch (port) {		
@@ -74,7 +126,7 @@ int dcdd_read_io(DCDD* dcdd, uint8_t port, uint8_t* value) {
 			break;
 
 		case PORT_DCDD_SECTOR:
-			*value = dcdd_sector_pos(dcdd);
+			*value = dcdd_sector(dcdd);
 			break;
 
 		case PORT_DCDD_DATA:
@@ -107,144 +159,149 @@ int dcdd_write_io(DCDD* dcdd, uint8_t port, uint8_t value) {
 	return 1;
 }
 
-uint8_t dcdd_status(DCDD* dcdd) {
-	dbg_print("dcdd status: %02X\n", dcdd->status);
-	return dcdd->status;
+static uint8_t dcdd_status(DCDD* dcdd) {
+	if (dcdd->selector & DCDD_SELECTOR_DRV_SELECT) {
+		return 0xFF;
+	}
+	return dcdd->disks[dcdd->selector].status;
 }
-uint8_t dcdd_sector_pos(DCDD* dcdd) {	
-	uint8_t sector_reg = 0;
-	if ((dcdd->status & DCDD_STATUS_HEAD_LOADED) == 0) {
-		if (dcdd->sector_pos < DCDD_SECTORS_PER_TRACK-1) {
-			dcdd->sector_pos++; 
-			sector_reg = (dcdd->sector_pos << 1);
-		}
-		else {			
-			dcdd->sector_pos = 0;
-		}
-		dcdd->read_index = 0;
+static uint8_t dcdd_sector(DCDD* dcdd) {
+	if (dcdd->selector & DCDD_SELECTOR_DRV_SELECT) {
+		return 0xFF;
 	}
-	else {
-		sector_reg = 0xFF;
+
+	if (dcdd->disks[dcdd->selector].status & DCDD_STATUS_HEAD_LOADED) {
+		// head not loaded
+		return 0xFF;
 	}
-	dbg_print("dcdd_sector_pos: reg=%02X, pos=%02X\n", sector_reg, dcdd->sector_pos);
-	return sector_reg;
+	
+	dcdd->disks[dcdd->selector].sector++;
+	if (dcdd->disks[dcdd->selector].sector >= DCDD_SECTORS_PER_TRACK) {
+		dcdd->disks[dcdd->selector].sector = 0;
+	}
+	dcdd->disks[dcdd->selector].index = 0;
+	return (dcdd->disks[dcdd->selector].sector << 1);
 }
-uint8_t dcdd_read(DCDD* dcdd) {
-	uint32_t offset = ((dcdd->track_pos * DCDD_SECTORS_PER_TRACK) * DCDD_BYTES_PER_SECTOR) + (dcdd->sector_pos * DCDD_BYTES_PER_SECTOR) + dcdd->read_index;
-	if (dcdd->selector & 0x80) {
-		dbg_print("dcdd_read drive_unselected: %08X\n", offset);
-		return 0;
+static uint8_t dcdd_read(DCDD* dcdd) {
+	if (dcdd->selector & DCDD_SELECTOR_DRV_SELECT) {
+		return 0xFF;
 	}
-	else if (dcdd->selector > 0xF) {
-		return 0;
+
+	if (dcdd->disks[dcdd->selector].status & DCDD_STATUS_HEAD_LOADED) {
+		// head not loaded
+		return 0xFF;
 	}
-	else if (dcdd->disk_file[dcdd->selector] == NULL) {		
-		return 0;
+
+	if (dcdd->disks[dcdd->selector].file == NULL) {
+		return 0xFF;
 	}
-	else if (fseek(dcdd->disk_file[dcdd->selector], offset, SEEK_SET) != 0) {
-		return 0;
+
+	uint32_t offset = head_pos(dcdd->disks[dcdd->selector]);
+	if (fseek(dcdd->disks[dcdd->selector].file, offset, SEEK_SET) != 0) {
+		return 0xFF;
 	}
-	else {
-		uint8_t v = 0;
-		fread(&v, 1, 1, dcdd->disk_file[dcdd->selector]);
-		dcdd->read_index++;
-		dbg_print("dcdd_read: track: %02d, sector: %02d, %08X=%02X\n", dcdd->track_pos, dcdd->sector_pos, offset, v);
-		return v;
-	}
+	
+	uint8_t v = 0;
+	fread(&v, 1, 1, dcdd->disks[dcdd->selector].file);
+	dcdd->disks[dcdd->selector].index++;
+	return v;
 }
-void dcdd_write(DCDD* dcdd, uint8_t value) {
-	uint32_t offset = ((dcdd->track_pos * DCDD_SECTORS_PER_TRACK) * DCDD_BYTES_PER_SECTOR) + (dcdd->sector_pos * DCDD_BYTES_PER_SECTOR) + dcdd->read_index;
-	if (dcdd->selector & 0x80) {
-		dbg_print("dcdd_write drive_unselected: %08X\n", offset);
+static void dcdd_write(DCDD* dcdd, uint8_t value) {
+	if (dcdd->selector & DCDD_SELECTOR_DRV_SELECT) {
 		return;
 	}
-	else if (dcdd->selector > 0xF) {
+
+	if (dcdd->disks[dcdd->selector].status & DCDD_STATUS_HEAD_LOADED) {
+		// head not loaded
 		return;
 	}
-	else if (dcdd->disk_file[dcdd->selector] == NULL) {
+
+	if (dcdd->disks[dcdd->selector].status & DCDD_STATUS_WRITE_READY) {
+		// write protected
 		return;
 	}
-	else if (fseek(dcdd->disk_file[dcdd->selector], offset, SEEK_SET) != 0) {
+
+	if (dcdd->disks[dcdd->selector].file == NULL) {
 		return;
 	}
-	else {
-		fwrite(&value, 1, 1, dcdd->disk_file[dcdd->selector]);
-		dcdd->read_index++;
-		dbg_print("dcdd_write: track: %02d, sector: %02d, %08X=%02X\n", dcdd->track_pos, dcdd->sector_pos, offset, v);
+
+	uint32_t offset = head_pos(dcdd->disks[dcdd->selector]);
+	if (fseek(dcdd->disks[dcdd->selector].file, offset, SEEK_SET) != 0) {
+		return;
 	}
+	
+	fwrite(&value, 1, 1, dcdd->disks[dcdd->selector].file);
+	dcdd->disks[dcdd->selector].index++;
 }
 
-void dcdd_selector(DCDD* dcdd, uint8_t value) {
-	if (value & 0x80) {
-		/* deselect drive */
-		dcdd->selector = 0x80;
-		dcdd->status |= DCDD_STATUS_DRV_SELECT;  // Disk is unselected and inactive
-		dbg_print("dcdd selector: deselect drive\n");
+static void dcdd_selector(DCDD* dcdd, uint8_t value) {
+	if (value & DCDD_SELECTOR_DRV_SELECT) {
+		/* deselect disk */
+		if ((dcdd->selector & DCDD_SELECTOR_DRV_SELECT) == 0) {
+			dcdd->disks[dcdd->selector].status |= DCDD_STATUS_DRV_SELECT | DCDD_STATUS_MOVE_HEAD;
+			dcdd->selector = DCDD_SELECTOR_DRV_SELECT;
+		}
 	}
 	else {
-		if (dcdd->disk_file[value & 0xF] == NULL) {
+		uint8_t selector = value & 0x0F;
+		if (dcdd->disks[selector].file == NULL) {
 			/* disk error */
-			dcdd->selector = 0x80;
-			dcdd->status &= ~DCDD_STATUS_DRV_SELECT; // Disk is selected and active
-			dbg_err("dcdd selector: disk not in %c:\n", 'A' + (value & 0xF));
+			dcdd->disks[selector].status |= DCDD_STATUS_DRV_SELECT | DCDD_STATUS_MOVE_HEAD;
+			dcdd->selector = DCDD_SELECTOR_DRV_SELECT;
 		}
 		else {
-			/* Select drive */
-			dcdd->selector = value & 0xF;
-			dcdd->status &= ~DCDD_STATUS_DRV_SELECT; // Disk is selected and active
-			dbg_print("dcdd selector: %c\n", 'A' + dcdd->selector);
+			/* select disk */
+			dcdd->disks[selector].status &= ~(DCDD_STATUS_DRV_SELECT | DCDD_STATUS_MOVE_HEAD);
+			dcdd->selector = selector;
 		}
 	}
 }
 
 static void step_in(DCDD* dcdd) {
-	if (dcdd->track_pos < DCDD_TRACKS_PER_DISK) {
-		dcdd->track_pos++;
-		dcdd->sector_pos = 0;
-		dcdd->read_index = 0;
+	if (dcdd->disks[dcdd->selector].track < DCDD_TRACKS_PER_DISK-1) {
+		dcdd->disks[dcdd->selector].track++;
+		dcdd->disks[dcdd->selector].sector = 0xFF;
+		dcdd->disks[dcdd->selector].index = 0;
 	}
-	if (dcdd->track_pos > 0) 
-		dcdd->status |= DCDD_STATUS_TRACK_ZERO;
-	else
-		dcdd->status &= ~DCDD_STATUS_TRACK_ZERO;
-	dbg_print("dcdd command: step in, track=%d\n", dcdd->track_pos);
+	dcdd->disks[dcdd->selector].status |= DCDD_STATUS_TRACK_ZERO; // Track not 0
 }
 static void step_out(DCDD* dcdd) {
-	if (dcdd->track_pos > 0) {
-		dcdd->track_pos--;
-		dcdd->sector_pos = 0;
-		dcdd->read_index = 0;
+	if (dcdd->disks[dcdd->selector].track > 0) {
+		dcdd->disks[dcdd->selector].track--;
+		dcdd->disks[dcdd->selector].sector = 0xFF;
+		dcdd->disks[dcdd->selector].index = 0;
 	}
-	if (dcdd->track_pos > 0)
-		dcdd->status |= DCDD_STATUS_TRACK_ZERO;
-	else
-		dcdd->status &= ~DCDD_STATUS_TRACK_ZERO;
-	dbg_print("dcdd command: step out, track=%d\n", dcdd->track_pos);
+	else {
+		dcdd->disks[dcdd->selector].status &= ~DCDD_STATUS_TRACK_ZERO; // Track 0
+	}
 }
 static void load_head(DCDD* dcdd) {
-	dcdd->status &= ~DCDD_STATUS_HEAD_LOADED;
-	dbg_print("dcdd command: load head\n");
+	dcdd->disks[dcdd->selector].status &= ~DCDD_STATUS_HEAD_LOADED; // head loaded for r/w
+	dcdd->disks[dcdd->selector].status &= ~DCDD_STATUS_READ_READY;  // read ready
+	dcdd->disks[dcdd->selector].sector = 0xFF; // set sector to FF so next time it's read it will read 0.
 }
 static void unload_head(DCDD* dcdd) {
-	dcdd->status |= DCDD_STATUS_HEAD_LOADED;
-	dbg_print("dcdd command: unload head\n");
-}
-static void enable_int(DCDD* dcdd) {
-	dcdd->status |= DCDD_STATUS_INT_ENABLED;
-	dbg_print("dcdd command: enable int\n");
-}
-static void disable_int(DCDD* dcdd) {
-	dcdd->status &= ~DCDD_STATUS_INT_ENABLED;
-	dbg_print("dcdd command: disable int\n");
-}
-static void reduce_head(DCDD* dcdd) {
-	dbg_print("dcdd command: reduce head\n");
+	dcdd->disks[dcdd->selector].status |= DCDD_STATUS_HEAD_LOADED; // head unloaded
+	dcdd->disks[dcdd->selector].status |= DCDD_STATUS_READ_READY;  // read not ready
+	dcdd->disks[dcdd->selector].status |= DCDD_STATUS_WRITE_READY; // write not ready
 }
 static void write_enable(DCDD* dcdd) {
-	dbg_print("dcdd command: write enable\n");
+	dcdd->disks[dcdd->selector].index = 0;
+	dcdd->disks[dcdd->selector].status &= ~DCDD_STATUS_WRITE_READY;
+}
+static void enable_int(DCDD* dcdd) {
+	dcdd->disks[dcdd->selector].status |= DCDD_STATUS_INT_ENABLED;
+}
+static void disable_int(DCDD* dcdd) {
+	dcdd->disks[dcdd->selector].status &= ~DCDD_STATUS_INT_ENABLED;
 }
 
-void dcdd_command(DCDD* dcdd, uint8_t value) {	
+static void dcdd_command(DCDD* dcdd, uint8_t value) {	
+
+	if (dcdd->selector & DCDD_SELECTOR_DRV_SELECT) {
+		return;
+	}
+
 	switch (value) {
 		
 		case DCDD_CMD_STEP_IN:
@@ -265,15 +322,8 @@ void dcdd_command(DCDD* dcdd, uint8_t value) {
 		case DCDD_CMD_DISABLE_INT:
 			disable_int(dcdd);
 			break;
-		case DCDD_CMD_REDUCE_HEAD:
-			reduce_head(dcdd);
-			break;
 		case DCDD_CMD_WRITE_ENABLE:
 			write_enable(dcdd);
 			break;
-		default:
-			dbg_print("dcdd unk command: %02X\n", value);
-			break;
 	}
 }
-
