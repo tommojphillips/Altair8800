@@ -27,13 +27,14 @@ void args(int argc, char** argv) {
 			const char* arg = argv[i] + j;
 
 			if (strncmp("-o", arg, 2) == 0) {
-				offset = strtol(arg + 2, NULL, 16) & 0xFFFF;
-				altair.cpu.pc = offset;
+				offset = strtol(arg + 2, NULL, 16);
+				altair.cpu.pc = offset & 0xFFFF;
 				break;
 			}
 
 			if (strncmp("-r", arg, 2) == 0) {
 				altair.ram_size = strtol(arg + 2, NULL, 16) & 0xFFFF;
+				printf("%04X\t-> RAMTOP\n", altair.ram_size);
 				break;
 			}
 
