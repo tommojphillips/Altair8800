@@ -67,6 +67,9 @@ Boots into wozmon.
 ```
 altair.exe -oFF00 88dskrom.bin -oF800 altmon.bin -oD000 wozmon.bin -dA:cpm3_disk1.dsk -dB:cpm3_disk2.dsk
 ```
+
+![Screenshot 2025-04-22 204524](https://github.com/user-attachments/assets/ebeda6cf-7167-473e-a824-2f89f6aabfd6)
+
 ## Building
 
 The project is built in Visual Studio 2022
