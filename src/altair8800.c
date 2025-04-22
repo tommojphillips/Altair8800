@@ -19,7 +19,11 @@
 
 #define PORT_FRONT_PANEL_SWITCHES 0xFF
 
+#ifdef _DEBUG
 #define dbg_err(x, ...) printf(x, __VA_ARGS__)
+#else
+#define dbg_err(x, ...)
+#endif
 
 ALTAIR8800 altair = { 0 };
 
